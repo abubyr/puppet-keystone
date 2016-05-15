@@ -90,14 +90,22 @@ class Puppet::Provider::Keystone < Puppet::Provider::Openstack
   end
 
   def self.get_auth_url
-    auth_url = nil
-    if ENV['OS_AUTH_URL']
-      auth_url = ENV['OS_AUTH_URL'].dup
-    elsif auth_url = get_os_vars_from_rcfile(rc_filename)['OS_AUTH_URL']
-    else
-      auth_url = admin_endpoint
+    endpoint = @credentials.auth_url
+    unless endpoint
+      if ENV['OS_AUTH_URL']
+        endpoint = ENV['OS_AUTH_URL']
+      else
+        endpoint = get_os_vars_from_rcfile(rc_filename)['OS_AUTH_URL']
+        unless endpoint
+          # This is from legacy but seems wrong, we want auth_url not url!
+          endpoint = get_admin_endpoint
+        end
+      end
     end
-    return auth_url
+    unless endpoint
+      raise(Puppet::Error::OpenstackAuthInputError, 'Could not find auth url to check user password.')
+    end
+    endpoint
   end
 
   def self.get_section(group, name)
